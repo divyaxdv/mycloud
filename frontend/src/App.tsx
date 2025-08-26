@@ -1,0 +1,315 @@
+import { useMemo, useRef, useState } from "react";
+
+
+type FileKind = "folder" | "pdf" | "doc" | "image" | "audio" | "video" | "other";
+
+type FileItem = {
+  id: string;
+  name: string;
+  size: number; // bytes
+  kind: FileKind;
+  tags: string[];
+  updatedAt: string; // ISO
+};
+
+const initialFiles: FileItem[] = [
+  { id: "1", name: "Project-Report.pdf", size: 235_000, kind: "pdf", tags: ["work", "Q3"], updatedAt: new Date().toISOString() },
+  { id: "2", name: "Holiday-Photo.png", size: 2_450_000, kind: "image", tags: ["travel"], updatedAt: new Date().toISOString() },
+  { id: "3", name: "Resume.docx", size: 145_000, kind: "doc", tags: ["career"], updatedAt: new Date().toISOString() },
+  { id: "4", name: "Podcast_Ep1.mp3", size: 8_450_000, kind: "audio", tags: ["learning"], updatedAt: new Date().toISOString() },
+  { id: "5", name: "Demo-Reel.mp4", size: 52_000_000, kind: "video", tags: ["portfolio"], updatedAt: new Date().toISOString() },
+];
+
+function bytesToReadable(n: number) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0, v = n;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function guessKind(filename: string, mime?: string): FileKind {
+  const name = filename.toLowerCase();
+  if (mime?.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg)$/i.test(name)) return "image";
+  if (mime?.startsWith("audio/") || /\.(mp3|wav|m4a|flac|aac)$/i.test(name)) return "audio";
+  if (mime?.startsWith("video/") || /\.(mp4|mov|avi|mkv|webm)$/i.test(name)) return "video";
+  if (/\.pdf$/i.test(name)) return "pdf";
+  if (/\.(docx?|rtf|txt|md)$/i.test(name)) return "doc";
+  return "other";
+}
+
+const KIND_EMOJI: Record<FileKind, string> = {
+  folder: "📁",
+  pdf: "📕",
+  doc: "📄",
+  image: "🖼️",
+  audio: "🎵",
+  video: "🎬",
+  other: "📦",
+};
+
+type Tab = "all" | "docs" | "images" | "audio" | "videos" | "pdfs";
+
+export default function App() {
+  const [files, setFiles] = useState<FileItem[]>(initialFiles);
+  const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<Tab>("all");
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const matches = (f: FileItem) =>
+      (!q || f.name.toLowerCase().includes(q) || f.tags.some(t => t.toLowerCase().includes(q))) &&
+      (tab === "all" ||
+        (tab === "docs" && (f.kind === "doc" || f.kind === "other")) ||
+        (tab === "images" && f.kind === "image") ||
+        (tab === "audio" && f.kind === "audio") ||
+        (tab === "videos" && f.kind === "video") ||
+        (tab === "pdfs" && f.kind === "pdf"));
+    return files.filter(matches);
+  }, [files, query, tab]);
+
+  function handleFiles(selected: FileList) {
+    const toAdd: FileItem[] = [];
+    Array.from(selected).forEach((f, idx) => {
+      toAdd.push({
+        id: `${Date.now()}-${idx}`,
+        name: f.name,
+        size: f.size,
+        kind: guessKind(f.name, (f as any).type),
+        tags: ["new"],
+        updatedAt: new Date().toISOString(),
+      });
+    });
+    setFiles(prev => [...toAdd, ...prev]);
+  }
+
+  return (
+    <div className="min-h-screen w-full bg-clouds text-white">
+      {/* Top Bar */}
+      <header className="sticky top-0 z-20 backdrop-blur-xl bg-black/30 border-b border-white/10">
+        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center gap-4">
+          {/* Brand */}
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">☁️</span>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-widest bg-gradient-to-r from-sky-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(56,189,248,0.35)]">
+              MyCloud
+            </h1>
+          </div>
+
+          {/* Search */}
+          <div className="ml-auto flex-1 max-w-xl">
+            <div className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 px-4 py-2 focus-within:ring-2 focus-within:ring-sky-400/60">
+              <span className="text-sky-300">🔎</span>
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search files, tags, or type…"
+                className="bg-transparent outline-none w-full placeholder:text-gray-400"
+              />
+            </div>
+          </div>
+
+          {/* Upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            multiple
+            onChange={e => e.target.files && handleFiles(e.target.files)}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-xl bg-gradient-to-r from-sky-500 to-fuchsia-600 px-4 py-2 font-semibold shadow-[0_10px_30px_-10px_rgba(168,85,247,0.55)] hover:opacity-90 transition"
+          >
+            Upload
+          </button>
+          <button
+            className="rounded-xl bg-white/10 px-4 py-2 font-semibold text-white border border-white/20 hover:bg-white/20 transition"
+          >
+            Login / Signup
+          </button>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl px-6 py-6 grid grid-cols-12 gap-6">
+        {/* Sidebar */}
+        <aside className="col-span-12 md:col-span-3 lg:col-span-2">
+          <nav className="rounded-2xl bg-white/5 border border-white/10 p-3 space-y-1 backdrop-blur-md">
+            {[
+              { key: "all", label: "All Files", icon: "🗂️" },
+              { key: "docs", label: "Documents", icon: "📄" },
+              { key: "images", label: "Images", icon: "🖼️" },
+              { key: "audio", label: "Audio", icon: "🎵" },
+              { key: "videos", label: "Videos", icon: "🎬" },
+              { key: "pdfs", label: "PDFs", icon: "📕" },
+            ].map(({ key, label, icon }) => (
+              <button
+                key={key}
+                onClick={() => setTab(key as Tab)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition ${
+                  tab === key
+                    ? "bg-gradient-to-r from-sky-500/20 to-fuchsia-600/20 border border-white/10"
+                    : "hover:bg-white/10"
+                }`}
+              >
+                <span className="text-lg">{icon}</span>
+                <span className="text-sm font-medium">{label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* AI Side Quick Actions */}
+          <div className="mt-6 rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
+            <h3 className="text-sm font-semibold text-sky-300 mb-3">AI Quick Actions</h3>
+            <div className="space-y-2">
+              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
+                ✨ Auto-tag new uploads
+              </button>
+              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
+                🧠 Suggest smart folders
+              </button>
+              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
+                📝 Summarize long docs
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main */}
+        <main className="col-span-12 md:col-span-6 lg:col-span-7 space-y-6">
+          {/* Breadcrumb + Actions */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-300">
+              Home <span className="mx-2">/</span>
+              <span className="text-white font-semibold">My Drive</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="rounded-lg px-3 py-2 text-sm bg-white/5 border border-white/10 hover:bg-white/10">
+                New Folder
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-lg px-3 py-2 text-sm bg-gradient-to-r from-sky-500 to-fuchsia-600 hover:opacity-90"
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+
+          {/* Dropzone */}
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
+            }}
+            className={`relative rounded-2xl border-2 border-dashed p-8 text-center transition
+              ${dragOver ? "border-sky-400 bg-sky-400/10" : "border-white/15 bg-white/5"}
+            `}
+          >
+            <div className="text-5xl mb-2">☁️</div>
+            <div className="text-sm text-gray-300">
+              Drag & drop files here, or{" "}
+              <button className="underline decoration-sky-400/60" onClick={() => fileInputRef.current?.click()}>
+                browse
+              </button>
+            </div>
+          </div>
+
+          {/* File Grid */}
+          <section>
+            <h2 className="text-sm font-semibold text-gray-300 mb-3">Files</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filtered.map((f) => (
+                <article
+                  key={f.id}
+                  className="group relative rounded-2xl bg-white/5 border border-white/10 p-4 hover:border-sky-400/40 hover:shadow-[0_15px_40px_-15px_rgba(56,189,248,0.35)] transition"
+                  title={f.name}
+                >
+                  <div className="text-4xl mb-3">
+                    {KIND_EMOJI[f.kind]}
+                  </div>
+                  <div className="text-sm font-medium truncate">{f.name}</div>
+                  <div className="text-[11px] text-gray-400 mt-1">{bytesToReadable(f.size)}</div>
+
+                  {/* Tags */}
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {f.tags.map((t, i) => (
+                      <span
+                        key={i}
+                        className="text-[10px] px-2 py-0.5 rounded-full bg-sky-400/10 border border-sky-400/20 text-sky-300"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Hover glow */}
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition bg-gradient-to-tr from-sky-500/5 via-fuchsia-500/5 to-pink-500/5 blur-2xl" />
+                </article>
+              ))}
+              {filtered.length === 0 && (
+                <div className="col-span-full text-center text-sm text-gray-400 py-10">
+                  No files match your filters.
+                </div>
+              )}
+            </div>
+          </section>
+        </main>
+
+        {/* AI Suggestions Panel */}
+        <aside className="col-span-12 md:col-span-3 lg:col-span-3 space-y-6">
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
+            <h3 className="text-sm font-semibold text-fuchsia-300">AI Suggestions</h3>
+            <p className="text-xs text-gray-300 mt-2">
+              Based on names & content, here are suggested tags:
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {["work", "travel", "career", "portfolio", "learning"].map((t) => (
+                <button
+                  key={t}
+                  className="text-xs px-2 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 hover:bg-fuchsia-500/20"
+                >
+                  + {t}
+                </button>
+              ))}
+            </div>
+            <button className="mt-4 w-full text-center text-sm rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 py-2">
+              Apply suggestions
+            </button>
+          </div>
+
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
+            <h3 className="text-sm font-semibold text-sky-300">Smart Folders</h3>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
+                <span>Receipts</span><span className="text-xs text-gray-400">8 items</span>
+              </li>
+              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
+                <span>Travel</span><span className="text-xs text-gray-400">12 items</span>
+              </li>
+              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
+                <span>Portfolio</span><span className="text-xs text-gray-400">5 items</span>
+              </li>
+            </ul>
+            <button className="mt-4 w-full text-center text-sm rounded-lg bg-gradient-to-r from-sky-500 to-fuchsia-600 hover:opacity-90 py-2">
+              Create folders
+            </button>
+          </div>
+        </aside>
+      </div>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10 bg-black/30 backdrop-blur-xl">
+        <div className="mx-auto max-w-7xl px-6 py-4 text-xs text-gray-400">
+          © {new Date().getFullYear()} MyCloud — Personal Cloud Storage with AI Organization
+        </div>
+      </footer>
+    </div>
+  );
+
+
+}

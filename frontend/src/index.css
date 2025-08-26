@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Subtle animated cloudy backdrop */
+.bg-clouds {
+  background: radial-gradient(1200px 600px at -20% 0%, rgba(56,189,248,0.08), transparent 60%),
+              radial-gradient(900px 500px at 120% 10%, rgba(217,70,239,0.08), transparent 60%),
+              radial-gradient(700px 400px at 50% 120%, rgba(236,72,153,0.07), transparent 60%),
+              linear-gradient(180deg, #0b0f19 0%, #0a0d15 60%, #090c13 100%);
+  animation: cloudShift 20s ease-in-out infinite;
+  background-size: 120% 120%;
+}
+
+@keyframes cloudShift {
+  0%   { background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%; }
+  50%  { background-position: 10% 5%, 90% 5%, 45% 95%, 0% 0%; }
+  100% { background-position: 0% 0%, 100% 0%, 50% 100%, 0% 0%; }
+}
