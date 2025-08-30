@@ -1,4 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect} from "react";
+import { useNavigate } from "react-router-dom";
+
 
 
 type FileKind = "folder" | "pdf" | "doc" | "image" | "audio" | "video" | "other";
@@ -54,7 +56,11 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>("all");
   const [dragOver, setDragOver] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
+  const [dropdownOpen, setdropdownOpen] = useState(false);
+  const username = localStorage.getItem("username") ? JSON.parse(localStorage.getItem("username") as string) : null;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const navigate = useNavigate();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -83,6 +89,28 @@ export default function App() {
     });
     setFiles(prev => [...toAdd, ...prev]);
   }
+
+useEffect(() => {
+    // Get token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+
+    if (token) {
+      // Store in localStorage
+      localStorage.setItem("token", token);
+      setIsLoggedIn(true)
+
+      // Remove token from URL
+      window.history.replaceState({}, document.title, "/");
+    } 
+  }, []);
+
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setIsLoggedIn(false);
+    navigate("/login");
+  };
 
   return (
     <div className="min-h-screen w-full bg-clouds text-white">
@@ -124,11 +152,34 @@ export default function App() {
           >
             Upload
           </button>
-          <button
-            className="rounded-xl bg-white/10 px-4 py-2 font-semibold text-white border border-white/20 hover:bg-white/20 transition"
-          >
-            Login / Signup
-          </button>
+       
+    {isLoggedIn ? (
+      <div
+        onClick={() => setdropdownOpen(!dropdownOpen)}
+        className="rounded-xl bg-red-500 px-4 py-2 font-semibold text-white border border-white/20 hover:bg-red-600 transition"
+      >
+       {username}
+        {dropdownOpen && (
+          <div className="absolute right-6 mt-12 w-48 bg-white/10 border border-white/20 rounded-xl shadow-lg backdrop-blur-md">
+            <button
+              onClick={handleLogout}
+              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-red-600/80 rounded-t-xl"
+            >
+              Logout
+            </button>
+          </div>
+        )}
+      </div>
+    ) : (
+      <button
+        onClick={() => navigate("/login")}
+        className="rounded-xl bg-white/10 px-4 py-2 font-semibold text-white border border-white/20 hover:bg-white/20 transition"
+      >
+        Login / Signup
+      </button>
+    )}
+  
+
         </div>
       </header>
 
@@ -310,6 +361,4 @@ export default function App() {
       </footer>
     </div>
   );
-
-
 }
