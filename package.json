@@ -7,8 +7,11 @@
   "scripts": {
     "dev:web": "yarn workspace frontend dev",
     "dev:api": "yarn workspace backend dev",
-    "dev": "yarn workspaces foreach --all -p run dev",
+    "dev": "yarn workspaces foreach --all -p --interlaced run dev",
     "build": "yarn workspaces foreach run build"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
   },
   "packageManager": "yarn@4.9.4"
 }
