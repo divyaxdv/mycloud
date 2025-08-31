@@ -1,0 +1,14 @@
+{
+  "name": "mycloud",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "yarn workspace frontend dev",
+    "dev:api": "yarn workspace backend dev",
+    "dev": "yarn workspaces foreach --all -p run dev",
+    "build": "yarn workspaces foreach run build"
+  },
+  "packageManager": "yarn@4.9.4"
+}
