@@ -236,6 +236,28 @@ export default function App() {
     }
   }
 
+  async function deleteFile(fileId: string) {
+    if (!window.confirm("Are you sure you want to delete this file?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/file/${fileId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to delete file");
+
+      // Update frontend state
+      setFiles((prev) => prev.filter((f) => f.id !== fileId));
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("Could not delete the file.");
+    }
+  }
+
   return (
     <div className="min-h-screen w-full bg-clouds text-white">
       {/* Top Bar */}
@@ -416,8 +438,25 @@ export default function App() {
                   className="group relative cursor-pointer rounded-2xl bg-white/5 border border-white/10 p-4 hover:border-sky-400/40 hover:shadow-[0_15px_40px_-15px_rgba(56,189,248,0.35)] transition"
                   title={f.name}
                 >
+                  {/* Delete Button (appears on hover) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent opening file
+                      deleteFile(f.id);
+                    }}
+                    className="absolute top-2 right-2 text-red-400 hover:text-red-600 text-sm bg-white/5 px-1 rounded opacity-0 group-hover:opacity-100 transition"
+                    title="Delete file"
+                  >
+                    🗑️
+                  </button>
+
+                  {/* File Icon */}
                   <div className="text-4xl mb-3">{KIND_EMOJI[f.kind]}</div>
+
+                  {/* File Name */}
                   <div className="text-sm font-medium truncate">{f.name}</div>
+
+                  {/* File Size */}
                   <div className="text-[11px] text-gray-400 mt-1">
                     {bytesToReadable(f.size)}
                   </div>
@@ -434,7 +473,7 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* Hover glow */}
+                  {/* Hover Glow */}
                   <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition bg-gradient-to-tr from-sky-500/5 via-fuchsia-500/5 to-pink-500/5 blur-2xl" />
                 </article>
               ))}

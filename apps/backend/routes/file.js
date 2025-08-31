@@ -3,6 +3,7 @@ const multer = require("multer");
 const s3 = require("../config/s3.js");
 const File = require("../models/fileSchema.js");
 const authenticate = require("../middleware/authenticate.js");
+const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -83,6 +84,34 @@ router.get("/:id/open", authenticate, async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to open file", details: err.message });
+  }
+});
+
+router.delete("/:id", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const fileId = req.params.id;
+
+    const file = await File.findOne({ _id: fileId, userId });
+    if (!file) return res.status(404).json({ error: "File not found" });
+
+    // Delete from S3
+    await s3
+      .deleteObject({
+        Bucket: process.env.S3_BUCKET || "my-bucket",
+        Key: file.storagePath,
+      })
+      .promise();
+
+    // Delete from MongoDB
+    await File.deleteOne({ _id: fileId });
+
+    res.json({ message: "File deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ error: "Failed to delete file", details: err.message });
   }
 });
 
