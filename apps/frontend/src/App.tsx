@@ -1,9 +1,14 @@
-import { useMemo, useRef, useState, useEffect} from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-
-
-type FileKind = "folder" | "pdf" | "doc" | "image" | "audio" | "video" | "other";
+type FileKind =
+  | "folder"
+  | "pdf"
+  | "doc"
+  | "image"
+  | "audio"
+  | "video"
+  | "other";
 
 type FileItem = {
   id: string;
@@ -15,25 +20,67 @@ type FileItem = {
 };
 
 const initialFiles: FileItem[] = [
-  { id: "1", name: "Project-Report.pdf", size: 235_000, kind: "pdf", tags: ["work", "Q3"], updatedAt: new Date().toISOString() },
-  { id: "2", name: "Holiday-Photo.png", size: 2_450_000, kind: "image", tags: ["travel"], updatedAt: new Date().toISOString() },
-  { id: "3", name: "Resume.docx", size: 145_000, kind: "doc", tags: ["career"], updatedAt: new Date().toISOString() },
-  { id: "4", name: "Podcast_Ep1.mp3", size: 8_450_000, kind: "audio", tags: ["learning"], updatedAt: new Date().toISOString() },
-  { id: "5", name: "Demo-Reel.mp4", size: 52_000_000, kind: "video", tags: ["portfolio"], updatedAt: new Date().toISOString() },
+  {
+    id: "1",
+    name: "Project-Report.pdf",
+    size: 235_000,
+    kind: "pdf",
+    tags: ["work", "Q3"],
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    name: "Holiday-Photo.png",
+    size: 2_450_000,
+    kind: "image",
+    tags: ["travel"],
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "3",
+    name: "Resume.docx",
+    size: 145_000,
+    kind: "doc",
+    tags: ["career"],
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "4",
+    name: "Podcast_Ep1.mp3",
+    size: 8_450_000,
+    kind: "audio",
+    tags: ["learning"],
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "5",
+    name: "Demo-Reel.mp4",
+    size: 52_000_000,
+    kind: "video",
+    tags: ["portfolio"],
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 function bytesToReadable(n: number) {
   const units = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0, v = n;
-  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  let i = 0,
+    v = n;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
   return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 function guessKind(filename: string, mime?: string): FileKind {
   const name = filename.toLowerCase();
-  if (mime?.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg)$/i.test(name)) return "image";
-  if (mime?.startsWith("audio/") || /\.(mp3|wav|m4a|flac|aac)$/i.test(name)) return "audio";
-  if (mime?.startsWith("video/") || /\.(mp4|mov|avi|mkv|webm)$/i.test(name)) return "video";
+  if (mime?.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg)$/i.test(name))
+    return "image";
+  if (mime?.startsWith("audio/") || /\.(mp3|wav|m4a|flac|aac)$/i.test(name))
+    return "audio";
+  if (mime?.startsWith("video/") || /\.(mp4|mov|avi|mkv|webm)$/i.test(name))
+    return "video";
   if (/\.pdf$/i.test(name)) return "pdf";
   if (/\.(docx?|rtf|txt|md)$/i.test(name)) return "doc";
   return "other";
@@ -58,14 +105,18 @@ export default function App() {
   const [dragOver, setDragOver] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
   const [dropdownOpen, setdropdownOpen] = useState(false);
-  const username = localStorage.getItem("username") ? JSON.parse(localStorage.getItem("username") as string) : null;
+  const username = localStorage.getItem("username")
+    ? JSON.parse(localStorage.getItem("username") as string)
+    : null;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = (f: FileItem) =>
-      (!q || f.name.toLowerCase().includes(q) || f.tags.some(t => t.toLowerCase().includes(q))) &&
+      (!q ||
+        f.name.toLowerCase().includes(q) ||
+        f.tags.some((t) => t.toLowerCase().includes(q))) &&
       (tab === "all" ||
         (tab === "docs" && (f.kind === "doc" || f.kind === "other")) ||
         (tab === "images" && f.kind === "image") ||
@@ -75,22 +126,43 @@ export default function App() {
     return files.filter(matches);
   }, [files, query, tab]);
 
-  function handleFiles(selected: FileList) {
-    const toAdd: FileItem[] = [];
-    Array.from(selected).forEach((f, idx) => {
-      toAdd.push({
-        id: `${Date.now()}-${idx}`,
-        name: f.name,
-        size: f.size,
-        kind: guessKind(f.name, (f as any).type),
-        tags: ["new"],
-        updatedAt: new Date().toISOString(),
-      });
+  async function handleFiles(selected: FileList) {
+    Array.from(selected).forEach(async (f, idx) => {
+      const formData = new FormData();
+      formData.append("file", f);
+
+      try {
+        const res = await fetch("http://localhost:5000/api/file/upload", {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Upload failed");
+        const resp = await res.json();
+        const saved = resp.file; // Assuming backend returns the saved file info
+
+        // Update UI immediately with backend response
+        setFiles((prev) => [
+          {
+            id: saved._id,
+            name: saved.originalName,
+            size: saved.size,
+            kind: guessKind(saved.originalName, saved.mimeType),
+            tags: saved.tags || [],
+            updatedAt: saved.updatedAt,
+          },
+          ...prev,
+        ]);
+      } catch (err) {
+        console.error("Upload error:", err);
+      }
     });
-    setFiles(prev => [...toAdd, ...prev]);
   }
 
-useEffect(() => {
+  useEffect(() => {
     // Get token from URL
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get("token");
@@ -98,19 +170,71 @@ useEffect(() => {
     if (token) {
       // Store in localStorage
       localStorage.setItem("token", token);
-      setIsLoggedIn(true)
+      setIsLoggedIn(true);
 
       // Remove token from URL
       window.history.replaceState({}, document.title, "/");
-    } 
+    }
   }, []);
 
+  useEffect(() => {
+    // Fetch all files from backend
+    const fetchFiles = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const res = await fetch("http://localhost:5000/api/file/getAll", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to fetch files");
+        const data = await res.json();
+
+        // Map backend response to FileItem format
+        const mapped: FileItem[] = data.map((f: any) => ({
+          id: f._id,
+          name: f.originalName,
+          size: f.size,
+          kind: guessKind(f.originalName, f.mimeType),
+          tags: f.tags || [],
+          updatedAt: f.updatedAt,
+        }));
+
+        setFiles(mapped);
+        console.log("Fetched files:", mapped);
+      } catch (err) {
+        console.error("Error fetching files:", err);
+      }
+    };
+
+    fetchFiles();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
     navigate("/login");
   };
+
+  async function openFile(fileId: string) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/file/${fileId}/open`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to open file");
+
+      const data = await res.json();
+      // data.url is the signed S3 URL
+      window.open(data.url, "_blank");
+    } catch (err) {
+      console.error("Error opening file:", err);
+      alert("Could not open the file.");
+    }
+  }
 
   return (
     <div className="min-h-screen w-full bg-clouds text-white">
@@ -131,7 +255,7 @@ useEffect(() => {
               <span className="text-sky-300">🔎</span>
               <input
                 value={query}
-                onChange={e => setQuery(e.target.value)}
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search files, tags, or type…"
                 className="bg-transparent outline-none w-full placeholder:text-gray-400"
               />
@@ -144,7 +268,7 @@ useEffect(() => {
             type="file"
             className="hidden"
             multiple
-            onChange={e => e.target.files && handleFiles(e.target.files)}
+            onChange={(e) => e.target.files && handleFiles(e.target.files)}
           />
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -152,34 +276,32 @@ useEffect(() => {
           >
             Upload
           </button>
-       
-    {isLoggedIn ? (
-      <div
-        onClick={() => setdropdownOpen(!dropdownOpen)}
-        className="rounded-xl bg-red-500 px-4 py-2 font-semibold text-white border border-white/20 hover:bg-red-600 transition"
-      >
-       {username}
-        {dropdownOpen && (
-          <div className="absolute right-6 mt-12 w-48 bg-white/10 border border-white/20 rounded-xl shadow-lg backdrop-blur-md">
-            <button
-              onClick={handleLogout}
-              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-red-600/80 rounded-t-xl"
-            >
-              Logout
-            </button>
-          </div>
-        )}
-      </div>
-    ) : (
-      <button
-        onClick={() => navigate("/login")}
-        className="rounded-xl bg-white/10 px-4 py-2 font-semibold text-white border border-white/20 hover:bg-white/20 transition"
-      >
-        Login / Signup
-      </button>
-    )}
-  
 
+          {isLoggedIn ? (
+            <div
+              onClick={() => setdropdownOpen(!dropdownOpen)}
+              className="rounded-xl bg-red-500 px-4 py-2 font-semibold text-white border border-white/20 hover:bg-red-600 transition"
+            >
+              {username}
+              {dropdownOpen && (
+                <div className="absolute right-6 mt-12 w-48 bg-white/10 border border-white/20 rounded-xl shadow-lg backdrop-blur-md">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-white hover:bg-red-600/80 rounded-t-xl"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate("/login")}
+              className="rounded-xl bg-white/10 px-4 py-2 font-semibold text-white border border-white/20 hover:bg-white/20 transition"
+            >
+              Login / Signup
+            </button>
+          )}
         </div>
       </header>
 
@@ -212,7 +334,9 @@ useEffect(() => {
 
           {/* AI Side Quick Actions */}
           <div className="mt-6 rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
-            <h3 className="text-sm font-semibold text-sky-300 mb-3">AI Quick Actions</h3>
+            <h3 className="text-sm font-semibold text-sky-300 mb-3">
+              AI Quick Actions
+            </h3>
             <div className="space-y-2">
               <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
                 ✨ Auto-tag new uploads
@@ -250,21 +374,32 @@ useEffect(() => {
 
           {/* Dropzone */}
           <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
-              if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
+              if (e.dataTransfer.files?.length)
+                handleFiles(e.dataTransfer.files);
             }}
             className={`relative rounded-2xl border-2 border-dashed p-8 text-center transition
-              ${dragOver ? "border-sky-400 bg-sky-400/10" : "border-white/15 bg-white/5"}
+              ${
+                dragOver
+                  ? "border-sky-400 bg-sky-400/10"
+                  : "border-white/15 bg-white/5"
+              }
             `}
           >
             <div className="text-5xl mb-2">☁️</div>
             <div className="text-sm text-gray-300">
               Drag & drop files here, or{" "}
-              <button className="underline decoration-sky-400/60" onClick={() => fileInputRef.current?.click()}>
+              <button
+                className="underline decoration-sky-400/60"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 browse
               </button>
             </div>
@@ -277,14 +412,15 @@ useEffect(() => {
               {filtered.map((f) => (
                 <article
                   key={f.id}
-                  className="group relative rounded-2xl bg-white/5 border border-white/10 p-4 hover:border-sky-400/40 hover:shadow-[0_15px_40px_-15px_rgba(56,189,248,0.35)] transition"
+                  onClick={() => openFile(f.id)}
+                  className="group relative cursor-pointer rounded-2xl bg-white/5 border border-white/10 p-4 hover:border-sky-400/40 hover:shadow-[0_15px_40px_-15px_rgba(56,189,248,0.35)] transition"
                   title={f.name}
                 >
-                  <div className="text-4xl mb-3">
-                    {KIND_EMOJI[f.kind]}
-                  </div>
+                  <div className="text-4xl mb-3">{KIND_EMOJI[f.kind]}</div>
                   <div className="text-sm font-medium truncate">{f.name}</div>
-                  <div className="text-[11px] text-gray-400 mt-1">{bytesToReadable(f.size)}</div>
+                  <div className="text-[11px] text-gray-400 mt-1">
+                    {bytesToReadable(f.size)}
+                  </div>
 
                   {/* Tags */}
                   <div className="mt-3 flex flex-wrap gap-1">
@@ -314,19 +450,23 @@ useEffect(() => {
         {/* AI Suggestions Panel */}
         <aside className="col-span-12 md:col-span-3 lg:col-span-3 space-y-6">
           <div className="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
-            <h3 className="text-sm font-semibold text-fuchsia-300">AI Suggestions</h3>
+            <h3 className="text-sm font-semibold text-fuchsia-300">
+              AI Suggestions
+            </h3>
             <p className="text-xs text-gray-300 mt-2">
               Based on names & content, here are suggested tags:
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {["work", "travel", "career", "portfolio", "learning"].map((t) => (
-                <button
-                  key={t}
-                  className="text-xs px-2 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 hover:bg-fuchsia-500/20"
-                >
-                  + {t}
-                </button>
-              ))}
+              {["work", "travel", "career", "portfolio", "learning"].map(
+                (t) => (
+                  <button
+                    key={t}
+                    className="text-xs px-2 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 hover:bg-fuchsia-500/20"
+                  >
+                    + {t}
+                  </button>
+                )
+              )}
             </div>
             <button className="mt-4 w-full text-center text-sm rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 py-2">
               Apply suggestions
@@ -334,16 +474,21 @@ useEffect(() => {
           </div>
 
           <div className="rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
-            <h3 className="text-sm font-semibold text-sky-300">Smart Folders</h3>
+            <h3 className="text-sm font-semibold text-sky-300">
+              Smart Folders
+            </h3>
             <ul className="mt-3 space-y-2 text-sm">
               <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Receipts</span><span className="text-xs text-gray-400">8 items</span>
+                <span>Receipts</span>
+                <span className="text-xs text-gray-400">8 items</span>
               </li>
               <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Travel</span><span className="text-xs text-gray-400">12 items</span>
+                <span>Travel</span>
+                <span className="text-xs text-gray-400">12 items</span>
               </li>
               <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Portfolio</span><span className="text-xs text-gray-400">5 items</span>
+                <span>Portfolio</span>
+                <span className="text-xs text-gray-400">5 items</span>
               </li>
             </ul>
             <button className="mt-4 w-full text-center text-sm rounded-lg bg-gradient-to-r from-sky-500 to-fuchsia-600 hover:opacity-90 py-2">
@@ -356,7 +501,8 @@ useEffect(() => {
       {/* Footer */}
       <footer className="border-t border-white/10 bg-black/30 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-6 py-4 text-xs text-gray-400">
-          © {new Date().getFullYear()} MyCloud — Personal Cloud Storage with AI Organization
+          © {new Date().getFullYear()} MyCloud — Personal Cloud Storage with AI
+          Organization
         </div>
       </footer>
     </div>

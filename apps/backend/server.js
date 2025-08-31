@@ -9,6 +9,7 @@ require("dotenv").config();
 require("./middleware/passport"); // load passport config
 
 const authRoutes = require("./routes/auth");
+const fileRoute = require("./routes/file");
 
 const app = express();
 
@@ -27,8 +28,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/file", fileRoute);
 
 // DB + server
 mongoose.connect(process.env.MONGO_URI).then(() => {
-  app.listen(5000, () => console.log("Server running on http://localhost:5000"));
+  app.listen(5000, () =>
+    console.log("Server running on http://localhost:5000")
+  );
 });
