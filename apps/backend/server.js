@@ -1,9 +1,9 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const passport = require("passport");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
+const { mongoClient } = require("@mycloud/lib");
 
 require("dotenv").config();
 require("./middleware/passport"); // load passport config
@@ -30,9 +30,14 @@ app.use(passport.session());
 app.use("/api/auth", authRoutes);
 app.use("/api/file", fileRoute);
 
-// DB + server
-mongoose.connect(process.env.MONGO_URI).then(() => {
-  app.listen(5000, () =>
-    console.log("Server running on http://localhost:5000")
-  );
-});
+(async () => {
+  try {
+    await mongoClient.connectMongo(process.env.MONGO_URI);
+    app.listen(5000, () => {
+      console.log("🚀 Server running on http://localhost:5000");
+    });
+  } catch (err) {
+    console.error("❌ Failed to start server:", err);
+    process.exit(1);
+  }
+})();

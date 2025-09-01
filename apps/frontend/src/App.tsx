@@ -105,6 +105,8 @@ export default function App() {
   const [dragOver, setDragOver] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
   const [dropdownOpen, setdropdownOpen] = useState(false);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
   const username = localStorage.getItem("username")
     ? JSON.parse(localStorage.getItem("username") as string)
     : null;
@@ -216,6 +218,47 @@ export default function App() {
     navigate("/login");
   };
 
+  async function applySuggestions(tags: string[]) {
+    if (!selectedFileId) {
+      alert("Please select a file first.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `http://localhost:5000/api/file/${selectedFileId}/metadata`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            key: "tags",
+            value: tags, // array of tags
+          }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to apply suggestions");
+
+      const updatedFile = await res.json();
+
+      // Update state with new tags
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === updatedFile._id ? { ...f, tags: updatedFile.tags } : f
+        )
+      );
+
+      alert("Suggestions applied successfully!");
+    } catch (err) {
+      console.error("Error applying suggestions:", err);
+      alert("Could not apply suggestions.");
+    }
+  }
+
   async function openFile(fileId: string) {
     try {
       const token = localStorage.getItem("token");
@@ -256,6 +299,24 @@ export default function App() {
       console.error("Delete error:", err);
       alert("Could not delete the file.");
     }
+  }
+
+  let clickTimeout: NodeJS.Timeout;
+
+  function handleFileClick(fileId: string) {
+    if (clickTimeout) clearTimeout(clickTimeout);
+
+    clickTimeout = setTimeout(() => {
+      // Single click -> select the file
+      setSelectedFileId(fileId);
+    }, 250); // 250ms threshold for double click
+  }
+
+  function handleFileDoubleClick(fileId: string) {
+    if (clickTimeout) clearTimeout(clickTimeout);
+
+    // Double click -> open the file
+    openFile(fileId);
   }
 
   return (
@@ -382,9 +443,30 @@ export default function App() {
               <span className="text-white font-semibold">My Drive</span>
             </div>
             <div className="flex items-center gap-2">
-              <button className="rounded-lg px-3 py-2 text-sm bg-white/5 border border-white/10 hover:bg-white/10">
-                New Folder
+              {/* Manual Folder Creation */}
+              <button
+                onClick={() => {
+                  const folderName = prompt("Enter folder name:");
+                  if (!folderName) return;
+                  // Add folder to state (or send to backend)
+                  setFiles((prev) => [
+                    {
+                      id: `folder-${Date.now()}`,
+                      name: folderName,
+                      size: 0,
+                      kind: "folder",
+                      tags: [],
+                      updatedAt: new Date().toISOString(),
+                    },
+                    ...prev,
+                  ]);
+                }}
+                className="rounded-lg px-3 py-2 text-sm bg-white/5 border border-white/10 hover:bg-white/10"
+              >
+                📁 New Folder
               </button>
+
+              {/* File Upload */}
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="rounded-lg px-3 py-2 text-sm bg-gradient-to-r from-sky-500 to-fuchsia-600 hover:opacity-90"
@@ -434,8 +516,15 @@ export default function App() {
               {filtered.map((f) => (
                 <article
                   key={f.id}
-                  onClick={() => openFile(f.id)}
-                  className="group relative cursor-pointer rounded-2xl bg-white/5 border border-white/10 p-4 hover:border-sky-400/40 hover:shadow-[0_15px_40px_-15px_rgba(56,189,248,0.35)] transition"
+                  onClick={() => handleFileClick(f.id)}
+                  onDoubleClick={() => handleFileDoubleClick(f.id)}
+                  className={`group relative cursor-pointer rounded-2xl border p-4 transition
+                    ${
+                      selectedFileId === f.id
+                        ? "border-sky-500 bg-white/10"
+                        : "border-white/10 bg-white/5"
+                    }
+                  `}
                   title={f.name}
                 >
                   {/* Delete Button (appears on hover) */}
@@ -492,23 +581,39 @@ export default function App() {
             <h3 className="text-sm font-semibold text-fuchsia-300">
               AI Suggestions
             </h3>
-            <p className="text-xs text-gray-300 mt-2">
+            <p className="text-xs text-gray-300 mt-2 mb-2">
               Based on names & content, here are suggested tags:
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {["work", "travel", "career", "portfolio", "learning"].map(
-                (t) => (
+                (tag) => (
                   <button
-                    key={t}
-                    className="text-xs px-2 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/30 hover:bg-fuchsia-500/20"
+                    key={tag}
+                    onClick={() => {
+                      setSelectedSuggestions((prev) =>
+                        prev.includes(tag)
+                          ? prev.filter((t) => t !== tag)
+                          : [...prev, tag]
+                      );
+                    }}
+                    className={`px-2 py-1 rounded-full text-xs ${
+                      selectedSuggestions.includes(tag)
+                        ? "bg-blue-500 text-white"
+                        : "bg-white/10 text-white/70 hover:bg-white/20"
+                    }`}
                   >
-                    + {t}
+                    {tag}
                   </button>
                 )
               )}
             </div>
-            <button className="mt-4 w-full text-center text-sm rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 py-2">
-              Apply suggestions
+            <button
+              onClick={() => applySuggestions(selectedSuggestions)}
+              disabled={selectedSuggestions.length === 0}
+              className="mt-4 w-full text-center text-sm rounded-lg bg-white/5 border border-white/10 
+             hover:bg-white/10 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Apply Suggestions
             </button>
           </div>
 

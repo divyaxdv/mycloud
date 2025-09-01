@@ -1,7 +1,7 @@
 const express = require("express");
 const multer = require("multer");
-const s3 = require("../config/s3.js");
-const File = require("../models/fileSchema.js");
+const s3 = require("@mycloud/lib").s3Client;
+const { File } = require("@mycloud/models");
 const authenticate = require("../middleware/authenticate.js");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 
@@ -112,6 +112,38 @@ router.delete("/:id", authenticate, async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to delete file", details: err.message });
+  }
+});
+
+router.patch("/:id/metadata", async (req, res) => {
+  const { id } = req.params;
+  const { key, value } = req.body;
+
+  if (!key) {
+    return res.status(400).json({ error: "Key is required" });
+  }
+
+  try {
+    // Special handling for tags (array)
+    let updateQuery = {};
+    if (key === "tags" && Array.isArray(value)) {
+      updateQuery = { $addToSet: { tags: { $each: value } } };
+    } else {
+      updateQuery = { $set: { [key]: value } };
+    }
+
+    const updatedFile = await File.findByIdAndUpdate(id, updateQuery, {
+      new: true,
+    });
+
+    if (!updatedFile) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    res.json(updatedFile);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update metadata" });
   }
 });
 
