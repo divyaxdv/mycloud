@@ -2,7 +2,8 @@
   "name": "mycloud",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev:web": "yarn workspace frontend dev",
