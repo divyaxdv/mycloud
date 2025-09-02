@@ -2,11 +2,13 @@ const express = require("express");
 const multer = require("multer");
 const s3 = require("@mycloud/lib").s3Client;
 const { File } = require("@mycloud/models");
+const { sendMessage } = require("../queues/producer.js");
 const authenticate = require("../middleware/authenticate.js");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+const QUEUE_URL = process.env.AWS_SQS_QUEUE_URL;
 
 // POST /upload (protected)
 router.post(
@@ -39,6 +41,8 @@ router.post(
         mimeType: req.file.mimetype,
         size: req.file.size,
       });
+
+      await sendMessage(QUEUE_URL, { fileId: fileDoc._id.toString() });
 
       res.json({ message: "Uploaded successfully", file: fileDoc });
     } catch (err) {
@@ -73,7 +77,7 @@ router.get("/:id/open", authenticate, async (req, res) => {
 
     // Generate signed URL using existing s3 client
     const url = s3.getSignedUrl("getObject", {
-      Bucket: process.env.S3_BUCKET || "my-bucket",
+      Bucket: process.env.S3_BUCKET || "my-test-bucket",
       Key: file.storagePath,
       Expires: 60, // URL valid for 60 seconds
     });

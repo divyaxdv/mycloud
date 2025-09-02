@@ -1,5 +1,5 @@
 const AWS = require("aws-sdk");
-
+require("dotenv").config();
 const s3 = new AWS.S3({
   endpoint: process.env.S3_ENDPOINT || "http://localhost:4566", // LocalStack or MinIO
   accessKeyId: process.env.AWS_ACCESS_KEY_ID || "test",

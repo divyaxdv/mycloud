@@ -10,7 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.879.0",
     "aws-sdk": "^2.1692.0",
+    "dotenv": "^17.2.1",
     "mongoose": "^8.18.0"
   }
 }

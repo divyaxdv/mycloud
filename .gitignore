@@ -52,6 +52,7 @@ Thumbs.db
 *.temp
 *.swp
 *.swo
+./localstack/
 
 # =========================
 # Optional: Ignore backend/uploads if any
