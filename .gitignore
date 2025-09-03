@@ -53,6 +53,7 @@ Thumbs.db
 *.swp
 *.swo
 ./localstack/
+localstack-data
 
 # =========================
 # Optional: Ignore backend/uploads if any
