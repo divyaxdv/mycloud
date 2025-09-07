@@ -9,7 +9,12 @@ const {
 const { File } = require("@mycloud/models");
 const s3 = require("@mycloud/lib").s3Client;
 const { GetObjectCommand } = require("@aws-sdk/client-s3");
-const { classifyAudio, classifyImage, classifyText } = require("./models");
+const {
+  classifyAudio,
+  classifyImage,
+  classifyText,
+  predictTags,
+} = require("./models");
 const pdf = require("pdf-parse");
 
 const QUEUE_URL = process.env.AWS_SQS_QUEUE_URL;
@@ -85,20 +90,26 @@ async function handleMessage(msg) {
     console.log("🔍 classifying buffer", fileBuffer.length);
 
     let category = "unknown";
+    let tags = [];
     if (file.mimeType.startsWith("image/")) {
-      category = await classifyImage(fileBuffer);
+      const prediction = await classifyImage(fileBuffer);
+      category = prediction.category;
+      tags = prediction.tags;
     } else if (file.mimeType.startsWith("text/")) {
       category = await classifyText(fileBuffer.toString("utf-8"));
     } else if (file.mimeType === "application/pdf") {
       const text = await extractTextFromPDF(fileBuffer); // raw buffer
+      tags = await predictTags(text);
       category = await classifyText(text);
     } else if (file.mimeType.startsWith("audio/")) {
       category = await classifyAudio("path/to/audio"); // same logic
     }
 
     console.log("🔍 File classified as:", category);
+    console.log("🔍 Tags predicted:", tags);
 
     file.category = category;
+    file.tags = Array.from(new Set([...(file.tags || []), ...tags]));
     await file.save();
 
     await sqsClient.send(
