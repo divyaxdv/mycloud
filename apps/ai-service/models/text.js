@@ -1,5 +1,5 @@
 const use = require("@tensorflow-models/universal-sentence-encoder");
-require("@tensorflow/tfjs-node");
+require("@tensorflow/tfjs");
 
 let textModel;
 let categoryEmbeddings = {};
