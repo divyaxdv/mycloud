@@ -1,5 +1,5 @@
 const mobilenet = require("@tensorflow-models/mobilenet");
-const tf = require("@tensorflow/tfjs-node");
+const tf = require("@tensorflow/tfjs");
 
 // Define your categories and tags for images
 const categories = {

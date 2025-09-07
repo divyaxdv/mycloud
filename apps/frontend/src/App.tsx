@@ -16,7 +16,8 @@ type FileItem = {
   size: number; // bytes
   kind: FileKind;
   tags: string[];
-  updatedAt: string; // ISO
+  updatedAt: string;
+  category?: string; // ISO
 };
 
 const initialFiles: FileItem[] = [
@@ -96,6 +97,11 @@ const KIND_EMOJI: Record<FileKind, string> = {
   other: "📦",
 };
 
+type FileCategory = {
+  category: string;
+  count: number;
+};
+
 type Tab = "all" | "docs" | "images" | "audio" | "videos" | "pdfs";
 
 export default function App() {
@@ -107,11 +113,23 @@ export default function App() {
   const [dropdownOpen, setdropdownOpen] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [categories, setCategories] = useState<FileCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
   const username = localStorage.getItem("username")
     ? JSON.parse(localStorage.getItem("username") as string)
     : null;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
+
+  const recentFiles = useMemo(() => {
+    return [...files]
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      )
+      .slice(0, 3); // Show top 5 recently updated files
+  }, [files]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -124,9 +142,10 @@ export default function App() {
         (tab === "images" && f.kind === "image") ||
         (tab === "audio" && f.kind === "audio") ||
         (tab === "videos" && f.kind === "video") ||
-        (tab === "pdfs" && f.kind === "pdf"));
+        (tab === "pdfs" && f.kind === "pdf")) &&
+      (!selectedCategory || f.category === selectedCategory);
     return files.filter(matches);
-  }, [files, query, tab]);
+  }, [files, query, tab, selectedCategory]);
 
   async function handleFiles(selected: FileList) {
     Array.from(selected).forEach(async (f, idx) => {
@@ -144,7 +163,9 @@ export default function App() {
 
         if (!res.ok) throw new Error("Upload failed");
         const resp = await res.json();
-        const saved = resp.file; // Assuming backend returns the saved file info
+        const saved = resp.file;
+
+        console.log("saved", saved);
 
         // Update UI immediately with backend response
         setFiles((prev) => [
@@ -200,6 +221,7 @@ export default function App() {
           kind: guessKind(f.originalName, f.mimeType),
           tags: f.tags || [],
           updatedAt: f.updatedAt,
+          category: f.category,
         }));
 
         setFiles(mapped);
@@ -210,6 +232,28 @@ export default function App() {
     };
 
     fetchFiles();
+
+    const fetchCategories = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const res = await fetch("http://localhost:5001/api/file/categories", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch categories");
+
+        const data = await res.json();
+        setCategories(data);
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    };
+
+    fetchCategories();
   }, []);
 
   const handleLogout = () => {
@@ -418,19 +462,30 @@ export default function App() {
           {/* AI Side Quick Actions */}
           <div className="mt-6 rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
             <h3 className="text-sm font-semibold text-sky-300 mb-3">
-              AI Quick Actions
+              Recent Files
             </h3>
-            <div className="space-y-2">
-              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
-                ✨ Auto-tag new uploads
-              </button>
-              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
-                🧠 Suggest smart folders
-              </button>
-              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
-                📝 Summarize long docs
-              </button>
-            </div>
+            <ul className="space-y-2 text-sm">
+              {recentFiles
+                .sort(
+                  (a, b) =>
+                    new Date(b.updatedAt).getTime() -
+                    new Date(a.updatedAt).getTime()
+                )
+                .slice(0, 5)
+                .map((file) => (
+                  <li
+                    key={file.id}
+                    className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 hover:bg-white/10 cursor-pointer"
+                    onClick={() => openFile(file.id)}
+                  >
+                    <span className="text-lg">{KIND_EMOJI[file.kind]}</span>
+                    <span className="truncate">{file.name}</span>
+                  </li>
+                ))}
+              {recentFiles.length === 0 && (
+                <li className="text-center text-gray-400">No recent files</li>
+              )}
+            </ul>
           </div>
         </aside>
 
@@ -440,7 +495,20 @@ export default function App() {
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-300">
               Home <span className="mx-2">/</span>
-              <span className="text-white font-semibold">My Drive</span>
+              <span
+                className="text-white font-semibold cursor-pointer"
+                onClick={() => setSelectedCategory(null)}
+              >
+                My Drive
+              </span>
+              {selectedCategory && (
+                <>
+                  <span className="mx-2">/</span>
+                  <span className="text-white font-semibold">
+                    {selectedCategory}
+                  </span>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {/* Manual Folder Creation */}
@@ -622,21 +690,42 @@ export default function App() {
               Smart Folders
             </h3>
             <ul className="mt-3 space-y-2 text-sm">
-              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Receipts</span>
-                <span className="text-xs text-gray-400">8 items</span>
-              </li>
-              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Travel</span>
-                <span className="text-xs text-gray-400">12 items</span>
-              </li>
-              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Portfolio</span>
-                <span className="text-xs text-gray-400">5 items</span>
-              </li>
+              {categories.map(({ category, count }) => (
+                <li
+                  key={category}
+                  onClick={() => {
+                    setSelectedCategory(category);
+                    setTab("all");
+                    setQuery("");
+                  }}
+                  className={`flex items-center justify-between rounded-lg px-3 py-2 cursor-pointer transition border ${
+                    selectedCategory === category
+                      ? "border-sky-500"
+                      : "border-white/10 hover:border-white/30"
+                  } bg-white/5 text-gray-300`}
+                >
+                  <span>{category}</span>
+                  <span className="text-xs text-gray-400">
+                    {count} item{count !== 1 ? "s" : ""}
+                  </span>
+                </li>
+              ))}
+              {categories.length === 0 && (
+                <li className="text-xs text-gray-400 text-center">
+                  No categories available
+                </li>
+              )}
             </ul>
-            <button className="mt-4 w-full text-center text-sm rounded-lg bg-gradient-to-r from-sky-500 to-fuchsia-600 hover:opacity-90 py-2">
-              Create folders
+            <button
+              className={`mt-4 w-full text-center text-sm rounded-lg py-2 ${
+                selectedCategory
+                  ? "bg-gradient-to-r from-sky-500 to-fuchsia-600 hover:opacity-90"
+                  : "bg-gray-500 cursor-not-allowed opacity-50"
+              }`}
+              onClick={() => setSelectedCategory(null)}
+              disabled={!selectedCategory}
+            >
+              Clear Filters
             </button>
           </div>
         </aside>
