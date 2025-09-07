@@ -134,7 +134,7 @@ export default function App() {
       formData.append("file", f);
 
       try {
-        const res = await fetch("http://localhost:5000/api/file/upload", {
+        const res = await fetch("http://localhost:5001/api/file/upload", {
           method: "POST",
           body: formData,
           headers: {
@@ -186,7 +186,7 @@ export default function App() {
       if (!token) return;
 
       try {
-        const res = await fetch("http://localhost:5000/api/file/getAll", {
+        const res = await fetch("http://localhost:5001/api/file/getAll", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed to fetch files");
@@ -227,7 +227,7 @@ export default function App() {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `http://localhost:5000/api/file/${selectedFileId}/metadata`,
+        `http://localhost:5001/api/file/${selectedFileId}/metadata`,
         {
           method: "PATCH",
           headers: {
@@ -262,7 +262,7 @@ export default function App() {
   async function openFile(fileId: string) {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/file/${fileId}/open`, {
+      const res = await fetch(`http://localhost:5001/api/file/${fileId}/open`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -284,7 +284,7 @@ export default function App() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/file/${fileId}`, {
+      const res = await fetch(`http://localhost:5001/api/file/${fileId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

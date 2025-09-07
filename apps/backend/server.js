@@ -33,8 +33,8 @@ app.use("/api/file", fileRoute);
 (async () => {
   try {
     await mongoClient.connectMongo(process.env.MONGO_URI);
-    app.listen(5000, () => {
-      console.log("🚀 Server running on http://localhost:5000");
+    app.listen(5001, () => {
+      console.log("🚀 Server running on http://localhost:5001");
     });
   } catch (err) {
     console.error("❌ Failed to start server:", err);
