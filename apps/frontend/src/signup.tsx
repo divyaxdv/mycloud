@@ -13,13 +13,11 @@ const Signup: React.FC = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/signup", {
+      const res = await axios.post("http://localhost:5001/api/auth/signup", {
         name,
         email,
         password,
       });
-
-  
 
       setMessage("Signup successful 🎉 Redirecting...");
 
@@ -27,7 +25,6 @@ const Signup: React.FC = () => {
       setTimeout(() => {
         navigate("/login");
       }, 1000);
-
     } catch (err: any) {
       setMessage(err.response?.data?.msg || "Signup failed ❌");
     }

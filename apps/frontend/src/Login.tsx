@@ -19,7 +19,7 @@ export default function Login() {
     e.preventDefault();
     setError(""); // Reset error before login
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch("http://localhost:5001/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -32,7 +32,9 @@ export default function Login() {
         localStorage.setItem("username", JSON.stringify(data.user.name));
         navigate("/");
       } else {
-        setError(data.message || "Login failed. Please check your credentials."); // Set error message
+        setError(
+          data.message || "Login failed. Please check your credentials."
+        ); // Set error message
       }
     } catch (error) {
       setError("Network error. Please try again."); // Set network error
@@ -47,9 +49,7 @@ export default function Login() {
       >
         <h2 className="text-3xl font-bold mb-6 text-center">Login </h2>
         {error && (
-          <div className="mb-4 p-3 bg-red-600 text-white rounded">
-            {error}
-          </div>
+          <div className="mb-4 p-3 bg-red-600 text-white rounded">{error}</div>
         )}
         <input
           type="email"
@@ -71,20 +71,22 @@ export default function Login() {
           type="submit"
           className="w-full bg-blue-500 hover:bg-blue-600 p-3 rounded font-semibold transition"
         >
-          Login 
+          Login
         </button>
-        
+
         <button
           type="button"
-          onClick={() => navigate("/signup")} 
-         className="w-full mt-4 bg-red-500 hover:bg-red-600 p-3 rounded font-semibold transition"
+          onClick={() => navigate("/signup")}
+          className="w-full mt-4 bg-red-500 hover:bg-red-600 p-3 rounded font-semibold transition"
         >
           Signup
         </button>
         <button
           type="button"
           className="w-full mt-4 bg-red-500 hover:bg-red-600 p-3 rounded font-semibold transition"
-          onClick={() => window.location.href = "http://localhost:5000/api/auth/google"}
+          onClick={() =>
+            (window.location.href = "http://localhost:5001/api/auth/google")
+          }
         >
           Continue with Google
         </button>

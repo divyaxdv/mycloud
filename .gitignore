@@ -59,3 +59,7 @@ localstack-data
 # Optional: Ignore backend/uploads if any
 # =========================
 uploads/
+<<<<<<< HEAD
+=======
+yarn.lock
+>>>>>>> b7a7614a2fff6034c611b028b3d31245b350778e
