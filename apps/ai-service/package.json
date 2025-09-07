@@ -5,7 +5,7 @@
   "main": "worker.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node worker.js"
+    "dev": "nodemon worker.js"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +24,9 @@
     "long": "^5.2.1",
     "natural": "^8.1.0",
     "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   },
   "resolutions": {
     "long": "^5.2.1"
