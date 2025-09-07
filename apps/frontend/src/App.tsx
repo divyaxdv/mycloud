@@ -119,6 +119,15 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
+  const recentFiles = useMemo(() => {
+    return [...files]
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      )
+      .slice(0, 3); // Show top 5 recently updated files
+  }, [files]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = (f: FileItem) =>
@@ -446,19 +455,30 @@ export default function App() {
           {/* AI Side Quick Actions */}
           <div className="mt-6 rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
             <h3 className="text-sm font-semibold text-sky-300 mb-3">
-              AI Quick Actions
+              Recent Files
             </h3>
-            <div className="space-y-2">
-              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
-                ✨ Auto-tag new uploads
-              </button>
-              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
-                🧠 Suggest smart folders
-              </button>
-              <button className="w-full text-left text-sm px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
-                📝 Summarize long docs
-              </button>
-            </div>
+            <ul className="space-y-2 text-sm">
+              {recentFiles
+                .sort(
+                  (a, b) =>
+                    new Date(b.updatedAt).getTime() -
+                    new Date(a.updatedAt).getTime()
+                )
+                .slice(0, 5)
+                .map((file) => (
+                  <li
+                    key={file.id}
+                    className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 hover:bg-white/10 cursor-pointer"
+                    onClick={() => openFile(file.id)}
+                  >
+                    <span className="text-lg">{KIND_EMOJI[file.kind]}</span>
+                    <span className="truncate">{file.name}</span>
+                  </li>
+                ))}
+              {recentFiles.length === 0 && (
+                <li className="text-center text-gray-400">No recent files</li>
+              )}
+            </ul>
           </div>
         </aside>
 
