@@ -5,6 +5,7 @@ const { File } = require("@mycloud/models");
 const { sendMessage } = require("../queues/producer.js");
 const authenticate = require("../middleware/authenticate.js");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const mongoose = require("mongoose");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -148,6 +149,26 @@ router.patch("/:id/metadata", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to update metadata" });
+  }
+});
+
+router.get("/categories", authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const summary = await File.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } }, // ✅ use 'new'
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $project: { category: "$_id", count: 1, _id: 0 } },
+    ]);
+
+    res.json(summary);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: "Failed to fetch category summary",
+      details: err.message,
+    });
   }
 });
 

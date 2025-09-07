@@ -96,6 +96,11 @@ const KIND_EMOJI: Record<FileKind, string> = {
   other: "📦",
 };
 
+type FileCategory = {
+  category: string;
+  count: number;
+};
+
 type Tab = "all" | "docs" | "images" | "audio" | "videos" | "pdfs";
 
 export default function App() {
@@ -107,6 +112,7 @@ export default function App() {
   const [dropdownOpen, setdropdownOpen] = useState(false);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [categories, setCategories] = useState<FileCategory[]>([]);
   const username = localStorage.getItem("username")
     ? JSON.parse(localStorage.getItem("username") as string)
     : null;
@@ -210,6 +216,28 @@ export default function App() {
     };
 
     fetchFiles();
+
+    const fetchCategories = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const res = await fetch("http://localhost:5001/api/file/categories", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch categories");
+
+        const data = await res.json();
+        setCategories(data);
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+      }
+    };
+
+    fetchCategories();
   }, []);
 
   const handleLogout = () => {
@@ -622,19 +650,24 @@ export default function App() {
               Smart Folders
             </h3>
             <ul className="mt-3 space-y-2 text-sm">
-              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Receipts</span>
-                <span className="text-xs text-gray-400">8 items</span>
-              </li>
-              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Travel</span>
-                <span className="text-xs text-gray-400">12 items</span>
-              </li>
-              <li className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                <span>Portfolio</span>
-                <span className="text-xs text-gray-400">5 items</span>
-              </li>
+              {categories.map(({ category, count }) => (
+                <li
+                  key={category}
+                  className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2 cursor-pointer hover:bg-white/10"
+                >
+                  <span>{category}</span>
+                  <span className="text-xs text-gray-400">
+                    {count} item{count !== 1 ? "s" : ""}
+                  </span>
+                </li>
+              ))}
+              {categories.length === 0 && (
+                <li className="text-xs text-gray-400 text-center">
+                  No categories available
+                </li>
+              )}
             </ul>
+
             <button className="mt-4 w-full text-center text-sm rounded-lg bg-gradient-to-r from-sky-500 to-fuchsia-600 hover:opacity-90 py-2">
               Create folders
             </button>
